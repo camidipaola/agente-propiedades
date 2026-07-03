@@ -97,9 +97,9 @@ Reglas:
 
 def guardar_en_sheets(ws, sh, datos: dict):
     def fmt_usd(val):
-        return f"USD {int(val):,}".replace(",", ".") if val else "—"
+        return f"USD {int(val):,}" if val else "—"
     def fmt_ars(val):
-        return f"$ {int(val):,}".replace(",", ".") if val else "—"
+        return f"$ {int(val):,}" if val else "—"
 
     # Encontrar última fila con propiedad
     ultima_prop = encontrar_ultima_fila_propiedad(ws)
