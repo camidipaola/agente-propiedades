@@ -242,7 +242,7 @@ if st.session_state.datos and not st.session_state.guardado:
                 st.session_state.guardado = True
                 st.rerun()
             except Exception as e:
-                st.error(f"Error al guardar: {e}")
+                st.error(f"Error al guardar: {type(e).__name__}: {e} | {repr(e)}")
 
 if st.session_state.guardado:
     st.success("🎉 ¡Propiedad guardada en la planilla!")
