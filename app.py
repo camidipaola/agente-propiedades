@@ -143,7 +143,7 @@ def guardar_en_sheets(ws, sh, datos: dict):
 
     # Poner fórmula USD/m²
     if m2 and usd:
-        ws.update_acell(f"H{nueva_fila}", f"=ROUND(G{nueva_fila}/E{nueva_fila},0)")
+        ws.update_acell(f"H{nueva_fila}", f"=G{nueva_fila}/E{nueva_fila}")
 
     # Poner link como "Ver aviso →"
     url = datos.get("aviso_url", "")
