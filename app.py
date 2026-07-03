@@ -18,7 +18,7 @@ st.markdown("""
 st.title("🏠 Cargador de Propiedades")
 st.caption("Pegá el link del aviso y la IA extrae los datos solos.")
 
-SPREADSHEET_ID = "1xIfb6PTLrToAtY_3d2cEPPYLjhzzlHVrGVFq_yp_oZw"
+SPREADSHEET_ID = st.secrets.get("SPREADSHEET_ID", "1avShRW4RWj_XHQGdrgQKmvEKXq8WktQpcNO4JQU_Wx4")
 
 GOOGLE_CREDS = {
     "type": "service_account",
