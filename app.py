@@ -129,7 +129,7 @@ def guardar_en_sheets(ws, sh, datos: dict):
         datos.get("direccion", ""),             # D - DIRECCIÓN
         int(m2) if m2 else "—",                # E - M²
         datos.get("piso", "") or "—",           # F - PISO
-        int(usd) if usd else "—",               # G - VALOR USD (número)
+        f"USD {int(usd):,}".replace(",",".") if usd else "—",  # G - VALOR USD
         "—",  # H - USD/M² (se pone después como fórmula)
         fmt_ars(exp) if exp else "—",           # I - EXPENSAS ARS
         datos.get("comentarios", "") or "—",    # J - COMENTARIOS
@@ -143,7 +143,8 @@ def guardar_en_sheets(ws, sh, datos: dict):
 
     # Poner fórmula USD/m²
     if m2 and usd:
-        ws.update_acell(f"H{nueva_fila}", f"=G{nueva_fila}/E{nueva_fila}")
+        usd_m2 = round(int(usd) / int(m2))
+        ws.update_acell(f"H{nueva_fila}", f"USD {usd_m2:,}".replace(",","."))
 
     # Poner link como "Ver aviso →"
     url = datos.get("aviso_url", "")
