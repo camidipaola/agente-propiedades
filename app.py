@@ -130,7 +130,7 @@ def guardar_en_sheets(ws, sh, datos: dict):
         int(m2) if m2 else "—",                # E - M²
         datos.get("piso", "") or "—",           # F - PISO
         valor_usd_str,                          # G - VALOR USD
-        f"=G{nueva_fila}/E{nueva_fila}" if (m2 and usd) else "—",  # H - USD/M²
+        "—",  # H - USD/M² (se pone después como fórmula)
         fmt_ars(exp) if exp else "—",           # I - EXPENSAS ARS
         datos.get("comentarios", "") or "—",    # J - COMENTARIOS
         datos.get("broker", "") or "—",         # K - BROKER
@@ -140,6 +140,10 @@ def guardar_en_sheets(ws, sh, datos: dict):
 
     # Insertar fila en posición correcta
     ws.insert_rows([valores + [""]], nueva_fila)
+
+    # Poner fórmula USD/m²
+    if m2 and usd:
+        ws.update_acell(f"H{nueva_fila}", f"=G{nueva_fila}/E{nueva_fila}")
 
     # Poner link como "Ver aviso →"
     url = datos.get("aviso_url", "")
