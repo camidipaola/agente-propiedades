@@ -129,7 +129,7 @@ def guardar_en_sheets(ws, sh, datos: dict):
         datos.get("direccion", ""),             # D - DIRECCIÓN
         int(m2) if m2 else "—",                # E - M²
         datos.get("piso", "") or "—",           # F - PISO
-        valor_usd_str,                          # G - VALOR USD
+        int(usd) if usd else "—",               # G - VALOR USD (número)
         "—",  # H - USD/M² (se pone después como fórmula)
         fmt_ars(exp) if exp else "—",           # I - EXPENSAS ARS
         datos.get("comentarios", "") or "—",    # J - COMENTARIOS
