@@ -157,7 +157,7 @@ def guardar_en_sheets(ws, datos: dict):
                     "endColumnIndex": 14
                 },
                 "pasteType": "PASTE_FORMAT",
-                "pasteOrientationEnum": "NORMAL"
+                
             }
         }]
     }
