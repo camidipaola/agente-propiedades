@@ -47,8 +47,7 @@ HEADERS = {
 def conectar_sheets():
     scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = dict(st.secrets["gcp_service_account"])
-    creds_dict["private_key"] = creds_dict["private_key"].replace("\n", "
-")
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     gc = gspread.authorize(creds)
     sh = gc.open_by_key(SPREADSHEET_ID)
