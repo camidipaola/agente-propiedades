@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import re
-from datetime import date, time
+from datetime import date
 import anthropic
 import gspread
 from google.oauth2.service_account import Credentials
@@ -15,7 +15,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🏠 Cargador de Propiedades")
-st.caption("Pegá el link de Zonaprop y la IA extrae los datos solos.")
+st.caption("Pegá el link del aviso y la IA extrae los datos solos.")
 
 SPREADSHEET_ID = "1xIfb6PTLrToAtY_3d2cEPPYLjhzzlHVrGVFq_yp_oZw"
 
@@ -66,7 +66,7 @@ def extraer_con_ia(html: str, url: str) -> dict:
     texto = re.sub(r'<[^>]+>', ' ', texto)
     texto = re.sub(r'\s+', ' ', texto).strip()[:12000]
 
-    prompt = f"""Analizá este texto de un aviso de Zonaprop Argentina y devolvé SOLO un JSON.
+    prompt = f"""Analizá este texto extraído de un aviso inmobiliario argentino y devolvé SOLO un JSON con los datos de la propiedad.
 
 TEXTO:
 {texto}
@@ -84,7 +84,7 @@ Devolvé EXACTAMENTE este JSON (sin texto extra, sin markdown):
 
 Reglas:
 - metros_raw: número entero de m² totales (null si no está)
-- valor_usd_raw: precio en USD como número entero (null si no está)
+- valor_usd_raw: precio en USD como número entero (null si no está). Si el precio está en ARS convertilo a USD usando un tipo de cambio aproximado de mercado
 - expensas_ars_raw: expensas en ARS como número entero (null si no están)
 - Si un dato no existe, usá null
 - SOLO JSON, nada más"""
@@ -135,7 +135,7 @@ if not ANTHROPIC_API_KEY:
     st.stop()
 
 st.subheader("1️⃣ Pegá el link del aviso")
-url = st.text_input("", placeholder="https://www.zonaprop.com.ar/propiedades/...", label_visibility="collapsed")
+url = st.text_input("", placeholder="https://www.zonaprop.com.ar/... o argenprop.com/... o cualquier portal", label_visibility="collapsed")
 
 st.subheader("2️⃣ Comentarios (opcional)")
 comentarios = st.text_area("", placeholder="Ej: buena luz, necesita reciclaje, 2 cocheras...", label_visibility="collapsed")
@@ -156,8 +156,8 @@ if "guardado" not in st.session_state:
     st.session_state.guardado = False
 
 if st.button("🔍 Extraer datos del aviso", type="primary"):
-    if not url or "zonaprop" not in url:
-        st.error("Ingresá un link válido de Zonaprop.")
+    if not url or not url.startswith("http"):
+        st.error("Ingresá un link válido (tiene que empezar con http).")
     else:
         st.session_state.guardado = False
         with st.spinner("Abriendo el aviso y extrayendo datos... (puede tardar 20 segundos)"):
