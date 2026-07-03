@@ -4,7 +4,7 @@ import re
 from datetime import date
 import anthropic
 import gspread
-from gspread_formatting import get_effective_format, format_cell_range, copy_format
+
 from google.oauth2.service_account import Credentials
 import requests
 
