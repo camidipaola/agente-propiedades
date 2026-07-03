@@ -4,6 +4,7 @@ import re
 from datetime import date
 import anthropic
 import gspread
+from gspread_formatting import get_effective_format, format_cell_range, copy_format
 from google.oauth2.service_account import Credentials
 import requests
 
@@ -18,31 +19,9 @@ st.markdown("""
 st.title("🏠 Cargador de Propiedades")
 st.caption("Pegá el link del aviso y la IA extrae los datos solos.")
 
-SPREADSHEET_ID = st.secrets.get("SPREADSHEET_ID", "1avShRW4RWj_XHQGdrgQKmvEKXq8WktQpcNO4JQU_Wx4")
-
-GOOGLE_CREDS = {
-    "type": "service_account",
-    "project_id": "scenic-block-501300-n9",
-    "private_key_id": "a451d7fa60bcc4b45fde7d109c92cff1d1b82cdd",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDE8Pmw99Avf485\njsL8UyUXiBke4nfsHltJO0nF05O7eRihF2pfRgnTD+TKr/8h/CH6PTYZ/VjTcpsO\nnNIlD5bkJB9EV26iRBLFwwk+MlxgQ3bOD6Yib340ujyNwUm44oXnLrevQgz6rsgu\niuswv6v6gW6wuPMC+OLJWopmn99MVfFrfJDdYmIDFzj0rLr8jUJEEpLmYzOLCyL1\njhDt4ZW0znC9aA5d/1S38My5tixCc2dMoo9HvaD3/WWneeHajUHROp+p4Sm8/c2J\nurKXnNKacQO4iJYTcQhwfXcQnJRIrfuCRCgEsMMdfPfGdDoJ/YmWRGBisqOxZ46W\nDkqMsmTzAgMBAAECggEAETKl61FIqc0u2azg1B4CoDJvVyYZqNHh0NxPjeny/a0O\nfIrJ7DX2h6rcpOKHmhUldm+/+LcJ+bUJW1ZQd5IL8DJDVLl53MurBAALH5ZQQMvD\nZS0yqdEoqTwWK57UbEPDw7NtsO1Iqt92dbIF5cTnJMIGw4HzHrBTRZgVe+68FjNH\nnKH+3/5523nGk6YRkGwa9IhspaW5ue2ao4QxjFub1R6aUa8lkblQ+uWI6YL6o9Zz\npIJnvU5RsdIpkvGIh6aJafPBSSUm+ZbeZ/OdM6PG9f5AZ6KUsQUo9ivi0HUGhgW0\njZLY2AexIH56425dWQyF+b8x9Qcd5niRlPmDto7ImQKBgQD8bG8JSNpnZ7mmWr4r\nZPE4tjTFb5jgIciPgxUvtSGq2CAmi+udGO/kcIO3aeu+9i2d81RkxWKXuwRkqP5t\np16zwn/ai9NZ8dbeowT+kkqcuMfQHUEuWL83ouaklRZcm4mqi5+WKQIt+HW9jwhf\nQ+BDbAqw/YLTDkXdiq4kTvyBrwKBgQDHu00/65u2WS3L+SMRBigTXdor2En5P1Tk\nAPNOyjXd23QebsrkAzhhpGaEJ6vS2Oe9I4kchWUOVNI0KZlQRacxkzex+gZ4ZjMO\nRCdQqP7knTY5HRdZQQfhYj1b+QENRLpGtRfHuH+yWJ8ek4NCWqyjaysSMqL1M5gj\nlAbg8sM1/QKBgQDX6/lfO853Pab0whKCFCqzlEi3yqo+rydce4iX8p0GAzIdRvsY\nusgZ5JUHQ7fA9dw3jHnYaW/Y0sUDRfu92LmNkwbC73CvM8vVTiVrjb/9J6LkRuIG\nvytycApTJqSmOvYbyKuOSy3uHOa6a6uBshIYGkda9r/9wevJgmNL87TTSQKBgFST\n1BqFQuLs0J/XWCoVWVMaIxD9/hU15FTIsj9jEXxpObrJX9E+K9ntLBw6UGBwyXEm\nYyFYu3peIMVF+E4tsKclmCgdoC/L10LrSVq2tXlJuXRmBUUebJ/cYe9YekGMIPVg\nKjnAvxJexMLF5Idsrj5lW0/RcYAz4PDv9hm7sz5hAoGBAO0J8aVifzO0wdWBmXC2\ng+1yDFYuF7DUmEH+XPYj68UFvRUL2pvB8As3emybK13JSaNjcOUV4J2iqchsPkFd\nJQYn7+MopqiWJkq3ik2V+VuvqJ5Pp8m88xuqxFjusaKa9hJL2x5oi2MMUbIOrgqJ\nq/kqtdWKYyJjMGUNnaolFTS8\n-----END PRIVATE KEY-----\n",
-    "client_email": "agente-propiedades@scenic-block-501300-n9.iam.gserviceaccount.com",
-    "client_id": "113276906618406088175",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/agente-propiedades%40scenic-block-501300-n9.iam.gserviceaccount.com",
-    "universe_domain": "googleapis.com"
-}
-
-ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "")
 SCRAPER_API_KEY = "2b6731ac933daea5856ba53385bd1007"
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "es-AR,es;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-}
+ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "")
+SPREADSHEET_ID = st.secrets.get("SPREADSHEET_ID", "")
 
 def conectar_sheets():
     scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -56,6 +35,14 @@ def conectar_sheets():
     except:
         ws = sh.get_worksheet(0)
     return ws
+
+def encontrar_ultima_fila_propiedad(ws):
+    todos = ws.get_all_values()
+    ultima = 6
+    for i, fila in enumerate(todos):
+        if fila and fila[0].strip().isdigit():
+            ultima = i + 1
+    return ultima
 
 def obtener_html(url: str) -> str:
     resp = requests.get(
@@ -90,7 +77,7 @@ Devolvé EXACTAMENTE este JSON (sin texto extra, sin markdown):
 
 Reglas:
 - metros_raw: número entero de m² totales (null si no está)
-- valor_usd_raw: precio en USD como número entero (null si no está). Si el precio está en ARS convertilo a USD usando tipo de cambio oficial aproximado
+- valor_usd_raw: precio en USD como número entero (null si no está)
 - expensas_ars_raw: expensas en ARS como número entero (null si no están)
 - Si un dato no existe, usá null
 - SOLO JSON, nada más"""
@@ -112,18 +99,26 @@ Reglas:
     datos["aviso_url"] = url
     return datos
 
-def guardar_en_sheets(ws, datos: dict, num_fila: int):
+def guardar_en_sheets(ws, datos: dict):
     def fmt_usd(val):
         return f"USD {int(val):,}".replace(",", ".") if val else ""
     def fmt_ars(val):
         return f"$ {int(val):,}".replace(",", ".") if val else ""
 
-    fila = [
-        num_fila,
+    ultima_prop = encontrar_ultima_fila_propiedad(ws)
+    nueva_fila = ultima_prop + 1
+
+    # Calcular número de propiedad
+    todos = ws.get_all_values()
+    nums = [int(f[0]) for f in todos if f and f[0].strip().isdigit()]
+    num = max(nums) + 1 if nums else 1
+
+    valores = [
+        str(num),
         datos.get("fecha", ""),
         datos.get("hora", ""),
         datos.get("direccion", ""),
-        int(datos["metros_raw"]) if datos.get("metros_raw") else "",
+        str(int(datos["metros_raw"])) if datos.get("metros_raw") else "",
         datos.get("piso", ""),
         fmt_usd(datos.get("valor_usd_raw")),
         fmt_usd(datos.get("usd_m2_raw")),
@@ -132,16 +127,48 @@ def guardar_en_sheets(ws, datos: dict, num_fila: int):
         datos.get("broker", ""),
         datos.get("telefono", ""),
         datos.get("estado", ""),
-        datos.get("aviso_url", ""),
     ]
-    ws.append_row(fila, value_input_option="USER_ENTERED")
+
+    # Insertar fila en la posición correcta
+    ws.insert_rows([valores + [""]], nueva_fila)
+
+    # Poner el link como "Ver aviso →"
+    url = datos.get("aviso_url", "")
+    if url:
+        ws.update_acell(f"N{nueva_fila}", f'=HYPERLINK("{url}","Ver aviso →")')
+
+    # Copiar formato de la fila anterior
+    sh = ws.spreadsheet
+    requests_body = {
+        "requests": [{
+            "copyPaste": {
+                "source": {
+                    "sheetId": ws.id,
+                    "startRowIndex": ultima_prop - 1,
+                    "endRowIndex": ultima_prop,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": 14
+                },
+                "destination": {
+                    "sheetId": ws.id,
+                    "startRowIndex": nueva_fila - 1,
+                    "endRowIndex": nueva_fila,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": 14
+                },
+                "pasteType": "PASTE_FORMAT",
+                "pasteOrientationEnum": "NORMAL"
+            }
+        }]
+    }
+    sh.batch_update(requests_body)
 
 if not ANTHROPIC_API_KEY:
     st.error("Falta configurar la API key de Anthropic en los secrets de Streamlit.")
     st.stop()
 
 st.subheader("1️⃣ Pegá el link del aviso")
-url = st.text_input("", placeholder="https://www.zonaprop.com.ar/... o argenprop.com/... o cualquier portal", label_visibility="collapsed")
+url = st.text_input("", placeholder="https://www.zonaprop.com.ar/... o cualquier portal inmobiliario", label_visibility="collapsed")
 
 st.subheader("2️⃣ Comentarios (opcional)")
 comentarios = st.text_area("", placeholder="Ej: buena luz, necesita reciclaje, 2 cocheras...", label_visibility="collapsed")
@@ -166,7 +193,7 @@ if st.button("🔍 Extraer datos del aviso", type="primary"):
         st.error("Ingresá un link válido (tiene que empezar con http).")
     else:
         st.session_state.guardado = False
-        with st.spinner("Abriendo el aviso y extrayendo datos... (puede tardar 20 segundos)"):
+        with st.spinner("Abriendo el aviso y extrayendo datos... (puede tardar 30 segundos)"):
             try:
                 html = obtener_html(url)
                 datos = extraer_con_ia(html, url)
@@ -204,9 +231,7 @@ if st.session_state.datos and not st.session_state.guardado:
         with st.spinner("Guardando en la planilla..."):
             try:
                 ws = conectar_sheets()
-                todos = ws.get_all_values()
-                num_fila = len(todos)
-                guardar_en_sheets(ws, d, num_fila)
+                guardar_en_sheets(ws, d)
                 st.session_state.guardado = True
                 st.rerun()
             except Exception as e:

@@ -1,5 +1,6 @@
 streamlit
 anthropic
 gspread
+gspread-formatting
 google-auth
 requests
