@@ -2,4 +2,4 @@ streamlit
 anthropic
 gspread
 google-auth
-playwright
+requests
