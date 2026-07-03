@@ -18,9 +18,16 @@ st.markdown("""
 st.title("🏠 Cargador de Propiedades")
 st.caption("Pegá el link del aviso y la IA extrae los datos solos.")
 
+st.subheader("🗂️ Planilla de destino")
+sheet_url = st.text_input("Link de Google Sheets", placeholder="https://docs.google.com/spreadsheets/d/...")
+if sheet_url and "/d/" in sheet_url:
+    SPREADSHEET_ID = sheet_url.split("/d/")[1].split("/")[0]
+else:
+    SPREADSHEET_ID = ""
+st.markdown("---")
+
 SCRAPER_API_KEY = "2b6731ac933daea5856ba53385bd1007"
 ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "")
-SPREADSHEET_ID = st.secrets.get("SPREADSHEET_ID", "")
 
 def conectar_sheets():
     scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
