@@ -5,7 +5,6 @@ from datetime import date
 import anthropic
 import gspread
 from google.oauth2.service_account import Credentials
-import requests
 
 st.set_page_config(page_title="Propiedades", page_icon="🏠", layout="centered")
 
@@ -36,13 +35,6 @@ GOOGLE_CREDS = {
 
 ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "")
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "es-AR,es;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-}
-
 def conectar_sheets():
     scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(GOOGLE_CREDS, scopes=scopes)
@@ -55,13 +47,18 @@ def conectar_sheets():
     return ws
 
 def obtener_html(url: str) -> str:
-    session = requests.Session()
-    # Primera request para obtener cookies
-    session.get("https://" + url.split("/")[2], headers=HEADERS, timeout=15)
-    # Request al aviso
-    resp = session.get(url, headers=HEADERS, timeout=15)
-    resp.raise_for_status()
-    return resp.text
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        page = context.new_page()
+        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(3000)
+        html = page.content()
+        browser.close()
+    return html
 
 def extraer_con_ia(html: str, url: str) -> dict:
     texto = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL)
@@ -87,7 +84,7 @@ Devolvé EXACTAMENTE este JSON (sin texto extra, sin markdown):
 
 Reglas:
 - metros_raw: número entero de m² totales (null si no está)
-- valor_usd_raw: precio en USD como número entero (null si no está). Si el precio está en ARS convertilo a USD usando tipo de cambio oficial aproximado
+- valor_usd_raw: precio en USD como número entero (null si no está). Si el precio está en ARS convertilo a USD usando un tipo de cambio aproximado de mercado
 - expensas_ars_raw: expensas en ARS como número entero (null si no están)
 - Si un dato no existe, usá null
 - SOLO JSON, nada más"""
