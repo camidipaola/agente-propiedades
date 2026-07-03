@@ -35,6 +35,7 @@ GOOGLE_CREDS = {
 }
 
 ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "")
+SCRAPER_API_KEY = "2b6731ac933daea5856ba53385bd1007"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -55,11 +56,11 @@ def conectar_sheets():
     return ws
 
 def obtener_html(url: str) -> str:
-    session = requests.Session()
-    # Primera request para obtener cookies
-    session.get("https://" + url.split("/")[2], headers=HEADERS, timeout=15)
-    # Request al aviso
-    resp = session.get(url, headers=HEADERS, timeout=15)
+    resp = requests.get(
+        "http://api.scraperapi.com",
+        params={"api_key": SCRAPER_API_KEY, "url": url, "render": "true", "country_code": "ar"},
+        timeout=60
+    )
     resp.raise_for_status()
     return resp.text
 
