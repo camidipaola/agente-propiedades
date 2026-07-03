@@ -60,7 +60,7 @@ def conectar_sheets():
 def obtener_html(url: str) -> str:
     resp = requests.get(
         "http://api.scraperapi.com",
-        params={"api_key": SCRAPER_API_KEY, "url": url, "render": "true", "country_code": "ar"},
+        params={"api_key": SCRAPER_API_KEY, "url": url, "country_code": "ar"},
         timeout=60
     )
     resp.raise_for_status()
