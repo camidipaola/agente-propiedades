@@ -4,7 +4,6 @@ import re
 from datetime import date
 import anthropic
 import gspread
-
 from google.oauth2.service_account import Credentials
 import requests
 
@@ -31,16 +30,16 @@ def conectar_sheets():
     gc = gspread.authorize(creds)
     sh = gc.open_by_key(SPREADSHEET_ID)
     try:
-        ws = sh.worksheet("Hoja1")
+        ws = sh.worksheet("Visitas")
     except:
         ws = sh.get_worksheet(0)
-    return ws
+    return ws, sh
 
 def encontrar_ultima_fila_propiedad(ws):
     todos = ws.get_all_values()
     ultima = 6
     for i, fila in enumerate(todos):
-        if fila and fila[0].strip().isdigit():
+        if fila and str(fila[0]).strip().isdigit():
             ultima = i + 1
     return ultima
 
@@ -93,75 +92,84 @@ Reglas:
     if not match:
         raise ValueError("No se pudieron extraer los datos del aviso.")
     datos = json.loads(match.group(0))
-    m2 = datos.get("metros_raw")
-    usd = datos.get("valor_usd_raw")
-    datos["usd_m2_raw"] = round(usd / m2) if m2 and usd else None
     datos["aviso_url"] = url
     return datos
 
-def guardar_en_sheets(ws, datos: dict):
+def guardar_en_sheets(ws, sh, datos: dict):
     def fmt_usd(val):
-        return f"USD {int(val):,}".replace(",", ".") if val else ""
+        return f"USD {int(val):,}".replace(",", ".") if val else "—"
     def fmt_ars(val):
-        return f"$ {int(val):,}".replace(",", ".") if val else ""
+        return f"$ {int(val):,}".replace(",", ".") if val else "—"
 
+    # Encontrar última fila con propiedad
     ultima_prop = encontrar_ultima_fila_propiedad(ws)
     nueva_fila = ultima_prop + 1
 
     # Calcular número de propiedad
     todos = ws.get_all_values()
-    nums = [int(f[0]) for f in todos if f and f[0].strip().isdigit()]
+    nums = [int(str(f[0]).strip()) for f in todos if f and str(f[0]).strip().isdigit()]
     num = max(nums) + 1 if nums else 1
 
+    # Columna G = col 7, E = col 5 (1-based)
+    # USD/m² como fórmula igual que las otras filas
+    m2 = datos.get("metros_raw")
+    usd = datos.get("valor_usd_raw")
+    
+    if usd:
+        valor_usd_str = f"USD {int(usd):,}".replace(",", ".")
+    else:
+        valor_usd_str = "—"
+
+    exp = datos.get("expensas_ars_raw")
+
     valores = [
-        str(num),
-        datos.get("fecha", ""),
-        datos.get("hora", ""),
-        datos.get("direccion", ""),
-        str(int(datos["metros_raw"])) if datos.get("metros_raw") else "",
-        datos.get("piso", ""),
-        fmt_usd(datos.get("valor_usd_raw")),
-        fmt_usd(datos.get("usd_m2_raw")),
-        fmt_ars(datos.get("expensas_ars_raw")),
-        datos.get("comentarios", ""),
-        datos.get("broker", ""),
-        datos.get("telefono", ""),
-        datos.get("estado", ""),
+        num,                                    # A - #
+        datos.get("fecha", ""),                 # B - FECHA
+        datos.get("hora", "") or "—",           # C - HORA
+        datos.get("direccion", ""),             # D - DIRECCIÓN
+        int(m2) if m2 else "—",                # E - M²
+        datos.get("piso", "") or "—",           # F - PISO
+        valor_usd_str,                          # G - VALOR USD
+        f"=G{nueva_fila}/E{nueva_fila}" if (m2 and usd) else "—",  # H - USD/M²
+        fmt_ars(exp) if exp else "—",           # I - EXPENSAS ARS
+        datos.get("comentarios", "") or "—",    # J - COMENTARIOS
+        datos.get("broker", "") or "—",         # K - BROKER
+        datos.get("telefono", "") or "—",       # L - TELÉFONO
+        datos.get("estado", "") or "—",         # M - ESTADO
     ]
 
-    # Insertar fila en la posición correcta
+    # Insertar fila en posición correcta
     ws.insert_rows([valores + [""]], nueva_fila)
 
-    # Poner el link como "Ver aviso →"
+    # Poner link como "Ver aviso →"
     url = datos.get("aviso_url", "")
     if url:
         ws.update_acell(f"N{nueva_fila}", f'=HYPERLINK("{url}","Ver aviso →")')
 
-    # Copiar formato de la fila anterior
-    sh = ws.spreadsheet
-    requests_body = {
+    # Copiar formato de la fila anterior usando batch_update de la API
+    sheet_id = ws.id
+    body = {
         "requests": [{
             "copyPaste": {
                 "source": {
-                    "sheetId": ws.id,
+                    "sheetId": sheet_id,
                     "startRowIndex": ultima_prop - 1,
                     "endRowIndex": ultima_prop,
                     "startColumnIndex": 0,
                     "endColumnIndex": 14
                 },
                 "destination": {
-                    "sheetId": ws.id,
+                    "sheetId": sheet_id,
                     "startRowIndex": nueva_fila - 1,
                     "endRowIndex": nueva_fila,
                     "startColumnIndex": 0,
                     "endColumnIndex": 14
                 },
-                "pasteType": "PASTE_FORMAT",
-                
+                "pasteType": "PASTE_FORMAT"
             }
         }]
     }
-    sh.batch_update(requests_body)
+    sh.batch_update(body)
 
 if not ANTHROPIC_API_KEY:
     st.error("Falta configurar la API key de Anthropic en los secrets de Streamlit.")
@@ -221,7 +229,6 @@ if st.session_state.datos and not st.session_state.guardado:
         m2 = d.get("metros_raw") or 0
         usd = d.get("valor_usd_raw") or 0
         usd_m2 = round(usd / m2) if m2 > 0 and usd > 0 else 0
-        d["usd_m2_raw"] = usd_m2
         st.metric("USD / m² (calculado)", f"USD {usd_m2:,.0f}".replace(",", ".") if usd_m2 else "—")
         d["telefono"] = st.text_input("Teléfono", value=d.get("telefono") or "")
 
@@ -230,8 +237,8 @@ if st.session_state.datos and not st.session_state.guardado:
     if st.button("✅ Guardar en Google Sheets", type="primary"):
         with st.spinner("Guardando en la planilla..."):
             try:
-                ws = conectar_sheets()
-                guardar_en_sheets(ws, d)
+                ws, sh = conectar_sheets()
+                guardar_en_sheets(ws, sh, d)
                 st.session_state.guardado = True
                 st.rerun()
             except Exception as e:
